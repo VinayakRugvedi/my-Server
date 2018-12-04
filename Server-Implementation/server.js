@@ -1,5 +1,7 @@
 const net = require('net')
+const fs = require('fs')
 
+const servingStaticFiles = require('./staticFileHandler.js')
 const server = net.createServer()
 
 server.listen(8080, () =>  {
@@ -10,7 +12,7 @@ server.on('connection', (client) => {
   client.on('data', (data) => {
     //data in buffer
     const headers = parseHeaders(data)
-    console.log(headers)
+    servingStaticFiles(headers, client)
   })
 
   client.on('error', (err) => {
@@ -29,7 +31,7 @@ function parseHeaders(data) {
   data = data.slice(1)
   for(let item of data) {
     if(item.indexOf(':') !== -1 && item.length !== 0) {
-      headers[item.slice(0, item.indexOf(':'))] = item.slice(item.indexOf(':') + 1)
+      headers[item.slice(0, item.indexOf(':'))] = item.slice(item.indexOf(':') + 2)
     }
   }
   return headers
