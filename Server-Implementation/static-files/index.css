@@ -1,8 +1,15 @@
+html {
+  background-color: black;
+  background-image: url('background.jpg');
+  background-size: 75vw 100vh;
+  background-position: right 0px;
+  background-repeat: no-repeat;
+}
+
 body {
   width: 90%;
   margin: auto;
   color: white;
-  background-color: #000;
   text-align: center;
 }
 
