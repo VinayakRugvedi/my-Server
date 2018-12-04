@@ -1,0 +1,23 @@
+body {
+  width: 90%;
+  margin: auto;
+  color: white;
+  background-color: #000;
+  text-align: center;
+}
+
+.content {
+  width: 100%;
+  letter-spacing: 10px;
+  font-size: 25px;
+  color: cyan;
+}
+
+.welcomeButton {
+  width: 150px;
+  height: 40px;
+  font-size: 25px;
+  color: white;
+  background-color: #000;
+  border: none;
+}
