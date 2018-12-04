@@ -1,5 +1,15 @@
 const fs = require('fs')
 
+const mimeType = {
+  '.html' : 'text/html',
+  '.css' : 'text/css',
+  '.js' : 'text/javascript',
+  '.json' : 'application.json',
+  '.jpg' : 'image/jpeg',
+  '.jpeg' : 'image/jpeg',
+  '.png' : 'image/png'
+}
+
 function servingStaticFiles(headers, client) {
   const path = headers['start-line'].split(' ')[1]
   if(path === '/') {
@@ -20,9 +30,9 @@ function servingStaticFiles(headers, client) {
   } else {
     fs.readFile('./static-files' + path, (err, content) => {
       if(err) console.log(err)
-
       let responseHeaders =
       `HTTP/1.1 200 OK
+      Content-Type : ${mimeType[path.slice(path.lastIndexOf('.'))]}
       Connection : keep-alive
       Content-Length : ${content.toString().length}
       \r\n
