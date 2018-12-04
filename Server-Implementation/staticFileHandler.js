@@ -18,9 +18,7 @@ function servingStaticFiles(headers, client) {
         console.log(err)
         if(err.errno === -2) {
           client.write(`HTTP/1.1 404 Not Found
-                        Content-Type : text/html
-                        \r\n
-                        <html><body>Not Found!</body></html>`)
+                        Content-Type : text/html\n\r <html><body>Not Found!</body></html>`)
           client.end()
         }
       } else {
@@ -30,8 +28,7 @@ function servingStaticFiles(headers, client) {
         Content-Type : text/html
         Connection : keep-alive
         Content-Length : ${content.toString().length}
-        \r\n
-        `
+        \n\n`
         let response = Buffer.concat([Buffer.from(responseHeaders), content])
         client.write(response)
         client.end()
@@ -43,9 +40,7 @@ function servingStaticFiles(headers, client) {
         console.log(err)
         if(err.errno === -2) {
           client.write(`HTTP/1.1 404 Not Found
-                        Content-Type : text/html
-                        \r\n
-                        <html><body>Not Found!</body></html>`)
+                        Content-Type : text/html\n\r <html><body>Not Found!</body></html>`)
           client.end()
         }
       } else {
@@ -55,8 +50,7 @@ function servingStaticFiles(headers, client) {
         Content-Type : ${mimeType[path.slice(path.lastIndexOf('.'))]}
         Connection : keep-alive
         Content-Length : ${content.toString().length}
-        \r\n
-        `
+        \n\n` //Required new lines and termination to avoid extra spaces in the beginning of the body
         let response = Buffer.concat([Buffer.from(responseHeaders), content])
         client.write(response)
         client.end()
