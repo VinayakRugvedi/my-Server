@@ -1,53 +1,36 @@
 const fs = require('fs')
 
 function servingStaticFiles(headers, client) {
-  let responseHeader
-  console.log(headers);
-  console.log(headers['Accept'].slice(0, headers['Accept'].indexOf(',')))
-  console.log(headers['start-line'].split(' '))
-  switch(headers['Accept'].slice(0, headers['Accept'].indexOf(',')).trim()) {
-    case 'text/html' :
-    responseHeader =
-                    `HTTP/1.1 200 OK
-                    \r\n
-                    `
-                        client.write(responseHeader)
-                        fs.readFile('./static-files/index.html', (err, content) => {
-                          if(err) console.log(err)
-                          client.write(content)
-                          client.end()
-                        })
-                        break
+  const path = headers['start-line'].split(' ')[1]
+  if(path === '/') {
+    fs.readFile('./static-files/index.html', (err, content) => {
+      if(err) console.log(err)
 
-    case 'text/css' :
-    responseHeader =
-                    `HTTP/1.1 200 OK
-                    \r\n
-                    `
-                        client.write(responseHeader)
-                        fs.readFile('./static-files'+headers['start-line'].split(' ')[1],
-                        (err, content) => {
-                          if(err) console.log(err)
-                          client.write(content)
-                          client.end()
-                        })
-                        break
+      let responseHeaders =
+      `HTTP/1.1 200 OK
+      Content-Type : text/html
+      Connection : keep-alive
+      Content-Length : ${content.toString().length}
+      \r\n
+      `
+      let response = Buffer.concat([Buffer.from(responseHeaders), content])
+      client.write(response)
+      client.end()
+    })
+  } else {
+    fs.readFile('./static-files' + path, (err, content) => {
+      if(err) console.log(err)
 
-    default :
-    responseHeader =
-                    `HTTP/1.1 200 OK
-                    \r\n
-                    `
-                        client.write(responseHeader)
-                        fs.readFile('./static-files'+headers['start-line'].split(' ')[1],
-                        (err, content) => {
-                          if(err) console.log(err)
-                          client.write(content)
-                          client.end()
-                        })
-                        break
-
-    // default : console.log('Nothing Found')
+      let responseHeaders =
+      `HTTP/1.1 200 OK
+      Connection : keep-alive
+      Content-Length : ${content.toString().length}
+      \r\n
+      `
+      let response = Buffer.concat([Buffer.from(responseHeaders), content])
+      client.write(response)
+      client.end()
+    })
   }
 }
 
