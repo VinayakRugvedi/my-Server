@@ -1,38 +1,98 @@
 const net = require('net')
-const fs = require('fs')
 
 const servingStaticFiles = require('./staticFileHandler.js')
-const server = net.createServer()
+const routeHandler = require('./routeHandler')
 
-server.listen(8080, () =>  {
-  console.log('The server is listening at PORT 8080')
-})
+function createServer(port = 8080) {
+  const server = net.createServer()
 
-server.on('connection', (client) => {
-  client.on('data', (data) => {
-    //data in buffer
-    const headers = parseHeaders(data)
-    servingStaticFiles(headers, client)
+  server.on('connection', (client) => {
+
+    client.on('error', (err) => {
+      console.log('SERVER : Socket Error! - The socket connection is closed now')
+      client.write('HTTP/1.1 500 Internal Server Error')
+      client.end()
+    })
+
+    client.on('data', (data) => {
+      //Assuming complete request is available
+      var request = parseRequest(data, client)
+    })
   })
 
-  client.on('error', (err) => {
+  server.listen(port, () =>  {
+    console.log(`The server is listening at PORT ${port}`)
+  })
+  server.on('error', (err) => {
     console.log(err)
+    client.write('HTTP/1.1 500 Internal Server Error')
+    client.end()
   })
-})
+}
 
-server.on('error', (err) => {
-  console.log(err)
-})
 
-function parseHeaders(data) {
-  data = data.toString().split('\r\n')
+function parseRequest(data, client) {
+  var response = {}
+  let [headerData, bodyData] = data.toString().split('\r\n\r\n')
   var headers = {}
-  headers['start-line'] = data[0]
-  data = data.slice(1)
-  for(let item of data) {
-    if(item.indexOf(':') !== -1 && item.length !== 0) {
-      headers[item.slice(0, item.indexOf(':'))] = item.slice(item.indexOf(':') + 2)
+
+  headerData = headerData.split('\r\n')
+  let startLine = headerData[0].split(' ')
+  if(startLine.length > 3) {
+    client.write('HTTP/1.1 400 Bad Request')
+    client.end()
+  }
+  headers['method'] = startLine[0]
+  headers['url'] = startLine[1]
+  headers['http-version'] = startLine[2]
+
+  parseUrl(headers)
+  headerData = headerData.slice(1)
+  for(let item of headerData) {
+    if(item.includes(':')) {
+      let headerKey = item.slice(0, item.indexOf(':'))
+      if(headerKey.includes(' ')) {
+        client.write('HTTP/1.1 400 Bad Request')
+        client.end()
+      } else headers[item.slice(0, item.indexOf(':'))] = item.slice(item.indexOf(':') + 2)
     }
   }
-  return headers
+
+  response.headers = headers
+
+  validateHeaders(headers, client) //Validating the header
+
+  response.body = bodyData
+  console.log(response)
+  client.end()
 }
+
+function parseUrl(headers) {
+  if(!headers.url.includes('&')) {
+    headers.path = headers.url
+  } else {
+    let path = headers.url.slice(0, headers.url.indexOf('?'))
+    let queryStrings = headers.url.slice(headers.url.indexOf('?') + 1).split('&')
+    let params = {}
+    for(let query of queryStrings) {
+      params[query.slice(0, query.indexOf('='))] = query.slice(query.indexOf('=') + 1)
+    }
+    headers.path = path
+    headers.queryStrings = params
+  }
+}
+
+function validateHeaders(headers, client) {
+  if(headers.method !== 'GET' && headers.method !== 'POST') {
+    client.write('HTTP/1.1 501 Not Implemented')
+    client.end()
+  }
+  if(headers.method === 'POST' && headers['Content-Length'] === undefined) {
+    client.write('HTTP/1.1 400 Bad Request')
+    client.end()
+  }
+}
+
+
+
+createServer(5000)
