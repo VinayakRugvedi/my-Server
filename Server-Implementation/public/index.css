@@ -1,0 +1,41 @@
+html {
+  background-color: black;
+  background-image: url('background.jpg');
+  background-size: 75vw 100vh;
+  background-position: right 0px;
+  background-repeat: no-repeat;
+}
+
+body {
+  width: 90%;
+  margin: auto;
+  color: white;
+  text-align: center;
+}
+
+.content {
+  width: 100%;
+  letter-spacing: 10px;
+  font-size: 25px;
+  color: cyan;
+}
+
+.welcomeButton {
+  width: 150px;
+  height: 40px;
+  font-size: 25px;
+  color: white;
+  background-color: #000;
+  border: none;
+}
+
+.catContainer {
+  position: relative;
+}
+
+img {
+  position: absolute;
+  top: 180px;
+  border: 2px solid white;
+  height: 200px;
+}
