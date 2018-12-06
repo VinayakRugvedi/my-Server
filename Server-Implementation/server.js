@@ -17,6 +17,15 @@ function createServer(port = 8080) {
     client.on('data', (data) => {
       //Assuming complete request is available
       var request = parseRequest(data, client)
+      console.log(request)
+    })
+
+    client.on('end', () => {
+      console.log('SERVER : FIN packet recieved')
+    })
+
+    client.on('close', () => {
+      console.log('SERVER : The client has disconnected the socket connection')
     })
   })
 
@@ -32,7 +41,7 @@ function createServer(port = 8080) {
 
 
 function parseRequest(data, client) {
-  var response = {}
+  var request = {}
   let [headerData, bodyData] = data.toString().split('\r\n\r\n')
   var headers = {}
 
@@ -58,13 +67,12 @@ function parseRequest(data, client) {
     }
   }
 
-  response.headers = headers
+  request.headers = headers
 
   validateHeaders(headers, client) //Validating the header
 
-  response.body = bodyData
-  console.log(response)
-  client.end()
+  request.body = bodyData
+  return request
 }
 
 function parseUrl(headers) {
@@ -92,7 +100,6 @@ function validateHeaders(headers, client) {
     client.end()
   }
 }
-
 
 
 createServer(5000)
