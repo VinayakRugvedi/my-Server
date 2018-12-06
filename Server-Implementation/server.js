@@ -10,27 +10,25 @@ function createServer(port = 8080) {
 
     client.on('error', (err) => {
       console.log('SERVER : Socket Error! - The socket connection will be closed now')
+      sendErrorStatusCode('500', client)
       // client.write('HTTP/1.1 500 Internal Server Error') //logs the above statement infinitely
-      client.destroy() //Will fire close event
+      // client.destroy() //Will fire close event
     })
 
     client.on('data', (data) => {
       //Assuming complete request is available
       var request = parseRequest(data, client)
       this.request = request
-      // console.log(myServer)
-      // console.log(this.directory);
-      // if(!this.directory)
       staticFileHandler(this.request.headers, client, this.staticDir)
     })
 
     client.on('end', () => {
       console.log('SERVER : FIN packet recieved') //Will fire close event
-      console.log(this.request.headers.path);
+      // console.log(this.request.headers.path);
     })
 
     client.on('close', () => {
-      console.log('SERVER : The socket connection is disconnected')
+      console.log('SERVER : The socket connection is closed')
     })
   })
 
@@ -39,8 +37,7 @@ function createServer(port = 8080) {
   })
   server.on('error', (err) => {
     console.log(err)
-    client.write('HTTP/1.1 500 Internal Server Error')
-    client.end()
+    sendErrorStatusCode('500', client)
   })
 }
 
@@ -53,8 +50,7 @@ function parseRequest(data, client) {
   headerData = headerData.split('\r\n')
   let startLine = headerData[0].split(' ')
   if(startLine.length > 3) {
-    client.write('HTTP/1.1 400 Bad Request')
-    client.end()
+    sendErrorStatusCode('400', client)
   }
   headers['method'] = startLine[0]
   headers['url'] = startLine[1]
@@ -66,8 +62,7 @@ function parseRequest(data, client) {
     if(item.includes(':')) {
       let headerKey = item.slice(0, item.indexOf(':'))
       if(headerKey.includes(' ')) {
-        client.write('HTTP/1.1 400 Bad Request')
-        client.end()
+        sendErrorStatusCode('400', client)
       } else headers[item.slice(0, item.indexOf(':'))] = item.slice(item.indexOf(':') + 2)
     }
   }
@@ -96,14 +91,28 @@ function parseUrl(headers) {
 }
 
 function validateHeaders(headers, client) {
+  console.log(headers.method);
   if(headers.method !== 'GET' && headers.method !== 'POST') {
-    client.write('HTTP/1.1 501 Not Implemented')
-    client.end()
+    sendErrorStatusCode('501', client)
   }
   if(headers.method === 'POST' && headers['Content-Length'] === undefined) {
-    client.write('HTTP/1.1 400 Bad Request')
-    client.end()
+    sendErrorStatusCode('400', client)
   }
+}
+
+function sendErrorStatusCode(statusCode, client) {
+  const httpStatusMessages = {
+    '501' : 'Not Implemented',
+    '400' : 'Bad Request',
+    '500' : 'Internal Server Error'
+  }
+  let response =
+`HTTP/1.1 ${statusCode} ${httpStatusMessages[statusCode]}
+Connection: keep-alive
+Content-Length: 0
+Date: ${new Date()}
+\r\n`
+  client.write(Buffer.from(response))
 }
 
 function staticServe(directory) {
@@ -111,16 +120,20 @@ function staticServe(directory) {
 }
 
 function addRoute(method, path, handlerFunction) {
-
+  
 }
 
 var myServer = {
   createServer : createServer,
   staticDir : 'public',
   staticServe : staticServe,
-  addRoute : addRoute
+  addRoute : addRoute,
+  routes : {
+    GET : {},
+    POST : {}
+  }
 }
 
 
 myServer.createServer(5000)
-// myServer.staticServe('public')
+myServer.staticServe('customPublic')
