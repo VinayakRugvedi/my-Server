@@ -1,6 +1,6 @@
 const net = require('net')
 
-const servingStaticFiles = require('./staticFileHandler.js')
+const staticFileHandler = require('./staticFileHandler.js')
 const routeHandler = require('./routeHandler')
 
 function createServer(port = 8080) {
@@ -9,23 +9,28 @@ function createServer(port = 8080) {
   server.on('connection', (client) => {
 
     client.on('error', (err) => {
-      console.log('SERVER : Socket Error! - The socket connection is closed now')
-      client.write('HTTP/1.1 500 Internal Server Error')
-      client.end()
+      console.log('SERVER : Socket Error! - The socket connection will be closed now')
+      // client.write('HTTP/1.1 500 Internal Server Error') //logs the above statement infinitely
+      client.destroy() //Will fire close event
     })
 
     client.on('data', (data) => {
       //Assuming complete request is available
       var request = parseRequest(data, client)
-      console.log(request)
+      this.request = request
+      // console.log(myServer)
+      // console.log(this.directory);
+      // if(!this.directory)
+      staticFileHandler(this.request.headers, client, this.staticDir)
     })
 
     client.on('end', () => {
-      console.log('SERVER : FIN packet recieved')
+      console.log('SERVER : FIN packet recieved') //Will fire close event
+      console.log(this.request.headers.path);
     })
 
     client.on('close', () => {
-      console.log('SERVER : The client has disconnected the socket connection')
+      console.log('SERVER : The socket connection is disconnected')
     })
   })
 
@@ -101,5 +106,21 @@ function validateHeaders(headers, client) {
   }
 }
 
+function staticServe(directory) {
+  this.staticDir = directory
+}
 
-createServer(5000)
+function addRoute(method, path, handlerFunction) {
+
+}
+
+var myServer = {
+  createServer : createServer,
+  staticDir : 'public',
+  staticServe : staticServe,
+  addRoute : addRoute
+}
+
+
+myServer.createServer(5000)
+// myServer.staticServe('public')
