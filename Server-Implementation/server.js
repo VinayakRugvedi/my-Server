@@ -1,28 +1,33 @@
 const net = require('net')
 
-const staticFileHandler = require('./staticFileHandler.js')
+const staticFileHandler = require('./staticFileHandler')
 const routeHandler = require('./routeHandler')
+const sendErrorStatusCode = require('./sendErrorStatusCode')
+
+const defaultHandlers = [staticFileHandler, routeHandler, errorHandler]
 
 function createServer(port = 8080) {
   const server = net.createServer()
 
   server.on('connection', (client) => {
 
+    client.setEncoding('utf-8')
+
     client.on('error', (err) => {
       console.log('SERVER : Socket Error! - The socket connection will be closed now')
       sendErrorStatusCode('500', client)
-      // client.write('HTTP/1.1 500 Internal Server Error') //logs the above statement infinitely
-      // client.destroy() //Will fire close event
+      client.destroy() //Will fire close event
     })
 
     client.on('data', (data) => {
       //Assuming complete request is available
-      console.log(data.toString().split('\r\n'))
-      var request = parseRequest(data, client)
+      let request = parseRequest(data, client)
+      if(!request)  return //The required msg would have already been given
+      else {
       this.request = request
-      console.log(request)
-      // staticFileHandler(this.request, this.staticDir, client)
-      routeHandler(this.request, this.routes, client)
+      staticFileHandler(request, this.staticDir, client, next)
+      // if(!routeHandler(request, this.routes, client))
+      }
     })
 
     client.on('end', () => {
@@ -30,7 +35,13 @@ function createServer(port = 8080) {
     })
 
     client.on('close', () => {
-      console.log('SERVER : The socket connection is closed')
+      console.log('SERVER : The socket connection is closed by client')
+    })
+
+    client.setTimeout(5000)
+    client.on('timeout', () => {
+      console.log('SERVER : The socket connection is being closed for being idle for too long')
+      client.destroy()
     })
   })
 
@@ -45,6 +56,8 @@ function createServer(port = 8080) {
 
 
 function parseRequest(data, client) {
+  console.log(data.toString())
+  console.log('In parsing request')
   var request = {}
   let headerData = data.toString().slice(0, data.toString().indexOf('\r\n\r\n'))
   let bodyData = data.toString().slice(data.toString().indexOf('\r\n\r\n') + 4)
@@ -59,7 +72,7 @@ function parseRequest(data, client) {
   }
   firstLine['method'] = startLine[0]
   firstLine['url'] = startLine[1]
-  firstLine['http-version'] = startLine[2]
+  firstLine['httpVersion'] = startLine[2]
 
   parseUrl(firstLine)
   request.startLine = firstLine
@@ -69,19 +82,20 @@ function parseRequest(data, client) {
     if(item.includes(':')) {
       let headerKey = item.slice(0, item.indexOf(':')).toLowerCase()
       if(headerKey.includes(' ')) {
-        sendErrorStatusCode('400', client)
+        sendErrorStatusCode('400', client) //Header key shouldnt have a space
       } else headers[headerKey] = item.slice(item.indexOf(':') + 2)
     }
   }
 
   request.headers = headers
   request.body = bodyData
-  validateRequest(request, client) //Validating the request
-  return request
+  if(validateRequest(request, client)) //Validating the request
+    return request
+  return false
 }
 
 function parseUrl(startLine) {
-  console.log(startLine)
+  console.log('In parse URL')
   if(!startLine.url.includes('?')) {
     startLine.path = startLine.url
   } else {
@@ -97,46 +111,36 @@ function parseUrl(startLine) {
 }
 
 function validateRequest(request, client) {
-  console.log(request.body.length);
-  if(request.startLine.method !== 'GET' && request.startLine.method !== 'POST') {
+  console.log('In validating request')
+  if(!request.startLine.httpVersion.includes('HTTP/1.1')) {
+    sendErrorStatusCode('505', client)
+    return false
+  }
+  else if(request.startLine.method !== 'GET' && request.startLine.method !== 'POST') {
     sendErrorStatusCode('501', client)
+    return false
   }
   else if(request.startLine.method === 'POST' && request.headers['content-length'] === undefined) {
     sendErrorStatusCode('400', client)
+    return false
   }
   else if(request.headers['content-length'] !== undefined && (Number(request.headers['content-length']) !== request.body.length)) {
     sendErrorStatusCode('400', client)
+    return false
   }
   else if(request.body.length > 0 && request.headers['content-length'] === undefined) {
     sendErrorStatusCode('411', client)
+    return false
   }
   else if(request.headers['content-length'] !== undefined && (Number(request.headers['content-length']) !== request.body.length)) {
     sendErrorStatusCode('400', client)
+    return false
   }
   else if(request.startLine.url.length > 100) {
     sendErrorStatusCode('411', client)
+    return false
   }
-}
-
-function sendErrorStatusCode(statusCode, client) {
-  const httpStatusMessages = {
-    '501' : 'Not Implemented',
-    '500' : 'Internal Server Error',
-    '505' : 'HTTP Version Not Supported',
-    '400' : 'Bad Request',
-    '404' : 'Not Found',
-    '405' : 'Method Not Allowed',
-    '411' : 'Length Required',
-    '414' : 'URI Too Long'
-  }
-  let response =
-`HTTP/1.1 ${statusCode} ${httpStatusMessages[statusCode]}
-Connection: keep-alive
-Content-Length: 0
-Date: ${new Date()}
-\r\n`
-  client.write(Buffer.from(response))
-  console.log('After writing')
+  return true
 }
 
 function staticServe(directory) {
@@ -151,6 +155,15 @@ function addRoute(method, path, handlerFunction) {
     case 'POST' : this.routes.POST[path] = handlerFunction
                   break
   }
+}
+
+function errorHandler(client) {
+  sendErrorStatusCode('404', client)
+}
+
+function next() {
+  currentHandler = 0
+  defaultHandlers[++currentHandler]()
 }
 
 var myServer = {
@@ -170,8 +183,6 @@ myServer.createServer(5000)
 myServer.addRoute('GET', '/', () => {
   console.log('i am god')
 })
-myServer.addRoute('POst', '/', info)
-
-function info() {
+myServer.addRoute('POst', '/', () => {
   console.log('I am the information provider')
-}
+})
