@@ -2,7 +2,6 @@ const validateRequest = require('./validateRequest')
 const sendErrorStatusCode = require('../sendErrorStatusCode')
 
 function parseRequest(data, client) {
-  console.log(data.toString())
   console.log('In parsing request')
   var request = {}
   let headerData = data.toString().slice(0, data.toString().indexOf('\r\n\r\n'))
@@ -13,7 +12,7 @@ function parseRequest(data, client) {
   headerData = headerData.split('\r\n')
   let startLine = headerData[0].split(' ')
   let firstLine = {}
-  if(startLine.length > 3) {
+  if(startLine.length !== 3) {
     sendErrorStatusCode('400', client)
   }
   firstLine['method'] = startLine[0]
