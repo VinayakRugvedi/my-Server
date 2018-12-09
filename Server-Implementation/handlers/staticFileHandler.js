@@ -25,7 +25,7 @@ function servingStaticFiles(request, dir, client, next) {
 Content-Type: ${mimeTypes[path.slice(path.lastIndexOf('.'))]}
 Connection: keep-alive
 Content-Length: ${content.toString().length - 1}
-Date: ${new Date()}
+Date: ${new Date().toUTCString()}
 Cache-Control: public, max-age=31536000
 \r\n` //CRLF
 
