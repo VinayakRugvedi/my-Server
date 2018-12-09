@@ -24,8 +24,11 @@ function createServer(port = 8080) {
       let request = parseRequest(data, client)
       if(!request)  return //The required msg would have already been given
       else {
-      this.request = request
-      this.staticFileHandler(request, this.staticDir, client)
+      myServer.request = request
+      if(request.startLine.method === 'GET')
+        myServer.staticFileHandler(request, myServer.staticDir, client)
+      else myServer.routeHandler(request, myServer.routes, client)
+      return
       }
     })
 
@@ -37,8 +40,8 @@ function createServer(port = 8080) {
       console.log('SERVER : The socket connection is closed')
     })
 
-    client.setTimeout(5000)
-    client.on('timeout', () => {
+    client.setTimeout(3000)
+    client.on('timeout', () => { //Fires after 3s of idleness
       console.log('SERVER : The socket connection is being closed for being idle for too long')
       client.destroy()
     })
@@ -54,23 +57,18 @@ function createServer(port = 8080) {
 }
 
 function staticServe(directory) {
-  this.staticDir = directory
+  myServer.staticDir = directory
 }
 
 function addRoute(method, path, handlerFunction) {
   method = method.toUpperCase()
-  switch(method) {
-    case 'GET' : this.routes.GET[path] = handlerFunction
-                 break
-    case 'POST' : this.routes.POST[path] = handlerFunction
-                  break
-  }
+  myServer.routes[`${method}`][path] = handlerFunction
+  console.log(myServer.routes)
 }
 
 function errorHandler(client) {
   sendErrorStatusCode('404', client)
 }
-
 
 const myServer = {
   createServer,
@@ -83,15 +81,12 @@ const myServer = {
   },
   staticFileHandler,
   routeHandler,
-  errorHandler
+  errorHandler,
+  userExposure : {
+    createServer : createServer,
+    staticServe : staticServe,
+    addRoute : addRoute
+  }
 }
 
-
-myServer.createServer(5000)
-
-myServer.addRoute('GET', '/echo', () => {
-  console.log('i am god')
-})
-myServer.addRoute('POst', '/', () => {
-  console.log('I am the information provider')
-})
+module.exports = myServer.userExposure
